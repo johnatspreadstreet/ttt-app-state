@@ -7,107 +7,131 @@
 'use strict';
 
 const state = (function() {
-  const cells = ['', '', '', '', '', '', '', '', ''];
+  const board = Array(9).fill(null);
   const xIsNext = false;
+  const winPattern = null;
 
   // Winning line can be represented as an array of index values of the 3 winning cells
   // If null, then no winner has been found
   const winners = [[0,1,2], [3,4,5], [6,7,8], [0,3,6], [1,4,7], [2,5,8], [2,4,6], [0,4,8]];
 
+  const setMove = function(cellNo) {
+    //Convert cellNo to integer in case it's still a string
+    const cell = Math.abs(cellNo);
+
+    //If there is a winner, this action must do nothing and return
+    if (state.winPattern) return;
+
+    //If something is already in cell, do nothing
+    if (state.board[cell] !== null) return;
+
+    //If xIsNext, then place 'X'; otherwise, place 'O'
+    state.board[cell] = state.xIsNext ? 'X' : 'O';
+
+    // set xIsNext to the *opposite* boolean value of current xIsNext
+    state.xIsNext = !state.xIsNext;
+
+    const winPattern = checkWinner(state.board);
+    if (winPattern) {
+      state.winPattern = winPattern;
+    }
+  };
+
+  const newGame = function() {
+    state.xIsNext = true;
+    state.board = Array(9).fill(null);
+    state.winPattern = null;
+  };
+
   return {
-    cells,
+    board,
     xIsNext,
-    winners
+    winners,
+    newGame,
+    setMove,
+    winPattern
   };
 }());
 
-function createBoardString(arr) {
-  return `
-    <div class="row">
-        <div class="cell" id="0">
-            <p>${arr[0]}&nbsp;</p>
-        </div>
-        <div class="cell" id="1">
-            <p>${arr[1]}&nbsp;</p>
-        </div>
-        <div class="cell" id="2">
-            <p>${arr[2]}&nbsp;</p>
-        </div>
-    </div>
-    <div class="row">
-        <div class="cell" id="3">
-            <p>${arr[3]}&nbsp;</p>
-        </div>
-        <div class="cell" id="4">
-            <p>${arr[4]}&nbsp;</p>
-        </div>
-        <div class="cell" id="5">
-            <p>${arr[5]}&nbsp;</p>
-        </div>
-    </div>
-    <div class="row">
-        <div class="cell" id="6">
-            <p>${arr[6]}&nbsp;</p>
-        </div>
-        <div class="cell" id="7">
-            <p>${arr[7]}&nbsp;</p>
-        </div>
-        <div class="cell" id="8">
-            <p>${arr[8]}&nbsp;</p>
-        </div>
-    </div>
-    `;
+function template() {
+  let html = '';
+
+  //Create opening div
+  html += '<div class="board">';
+
+  //Iterate each "row" in our 'state.board'
+  state.board.forEach((cell, ind) => {
+    const winClass = (state.winPattern && state.winPattern.includes(ind)) ? 'win' : '';
+    // If new row, open row div:
+    if ( ind === 0 || ind === 3 || ind === 6) {
+      html += '<div class="row">';
+    }
+
+    // Output blank character "&nbsp" if cell data is null, otherwise output cell data.
+    // Blank char helps css
+    html += `
+            <div class="cell ${winClass}" id="${ind}">
+                <p>${cell ? cell : '&nbsp;'}</p>
+            </div>
+        `;
+
+    // Close row div:
+    if (ind === 2 || ind === 5 || ind === 8) {
+      html += '</div>';
+    }
+  });
+
+  html += '</div>';
+
+  return html;
 }
 
-// State modification functions
-function resetGame() {
-  // Allows the player to select a new game
-  state.xIsNext = true;
-  state.cells = Array(9).fill(null);
-  state.winPattern = null;
-  console.log('Reset game function ran');
-}
-
-function placeXorO() {
-  // Allows the player to place an X or an O inside of a square
-  console.log('Place X or O function ran successfully');
+// Event handlers
+function onCellClick(event) {
+  const cellId = $(event.target).closest('.cell').attr('id');
+  state.setMove(cellId);
+  renderBoard();
 }
 
 // Render functions
-
-
-function preventCellChange() {
-  // Prevents a player from changing their selection
-  console.log('Prevent cell change ran');
-}
-
-function checkWinner() {
-  // Shows if a winning line is on the board
-  console.log('Render winning line ran');
-}
-
 function renderBoard() {
-  // This will render the tic-tac-toe board
-  $('.board').html(createBoardString(state.cells));
-  console.log('render board ran');
+  $('.game').html(template());
 }
 
-// Event Listeners
-function onCellClick() {
-  // Retrieves the DOM info if applicable (ex. which cell was clicked?)
+function renderSelection() {
+  $('.game').on('click', '.cell', onCellClick);
 }
 
 function onNewGameClick() {
-  // Starts a new game
+  state.newGame();
+  renderBoard();
 }
 
+function renderNewGame() {
+  $('#new-game').click(onNewGameClick);
+}
+
+function checkWinner(board) {
+  const winPatterns = state.winners;
+
+  for (let i = 0; i < winPatterns.length; i++) {
+    const winPattern = winPatterns[i];
+
+    // Prevent win with three nulls
+    if ( !board[winPattern[0]] ) continue;
+
+    if ( board[winPattern[0]] === board[winPattern[1]] && board[winPattern[1]] === board[winPattern[2]]) {
+      return winPattern;
+    }
+  }
+
+  return null;
+}
 
 function main() {
-  placeXorO();
-  preventCellChange();
-  checkWinner();
-  resetGame();
   renderBoard();
+  renderSelection();
+  renderNewGame();
 }
 
 $(main);
